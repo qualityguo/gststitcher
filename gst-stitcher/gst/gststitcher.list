@@ -1,0 +1,5 @@
+{
+    gst_plugin_desc;
+    gst_plugin_gststitcher_register;
+    gst_plugin_gststitcher_get_desc;
+};

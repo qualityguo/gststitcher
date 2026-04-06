@@ -1,0 +1,37 @@
+# Build directory
+/build/
+*.o
+*.so
+*.a
+
+# C language server
+.cache/
+clangd/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Demo test files (images and videos)
+demo1/*/*.png
+demo1/*/*.jpg
+demo1/*/*.jpeg
+demo1/*/*.mp4
+demo1/*/*.avi
+demo1/*/imgs/stitching.map/
+demo1/*/videos/
+demo1/*/output/
+
+# Test outputs
+*.png.output
+*_stitched.*
+
+# Logs
+*.log
+
+# Backup files
+*.bak
+*~

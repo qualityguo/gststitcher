@@ -1,0 +1,27 @@
+# Build
+build/
+*.o
+*.so
+*.a
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude local config
+.claude/
+
+# Demo test images and videos (large files)
+gst-stitcher/demo1/*/imgs/
+*.png
+*.jpg
+*.jpeg
+*.mp4
+*.avi
+*.mov
+gst-stitcher/demo1/2video/temp_benchmark/
+gst-stitcher/demo1/2video/imgs/*.bin

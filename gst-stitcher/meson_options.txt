@@ -1,0 +1,5 @@
+option('cuda', type: 'boolean', value: false,
+  description: 'Enable CUDA backend')
+
+option('calibrate', type: 'boolean', value: true,
+  description: 'Build calibration tool (requires OpenCV)')
