@@ -118,9 +118,6 @@ static void map_backend_warp(void *ctx,
     //         dst_offset_x, dst_offset_y, src_w, src_h);
 
     /* Process each output pixel */
-    int pixel_count = 0;
-    int first_coord_check = 1;  /* Debug flag */
-
     for (int oy = 0; oy < warp_h; oy++) {
         /* Calculate absolute canvas Y coordinate */
         int canvas_y = dst_offset_y + oy;
@@ -153,23 +150,9 @@ static void map_backend_warp(void *ctx,
             /* Get validated coordinate from map */
             const ValidatedCoordinate *coord = &coords[map_idx];
 
-            /* Debug: print first coordinate */
-            if (first_coord_check && oy == 0 && ox == 0) {
-                fprintf(stderr, "First coord for image %d: canvas=(%d,%d) map_idx=%d src=(%u,%u) flags=0x%02x\n",
-                        image_index, canvas_x, canvas_y, map_idx, coord->x0, coord->y0, coord->flags);
-                first_coord_check = 0;
-            }
-
             /* Check if coordinate is marked as valid */
             if (!(coord->flags & COORD_FLAG_IS_VALID)) {
                 /* Marked as invalid during map generation - output black */
-                /* Debug: print first few invalid coords */
-                static int invalid_count = 0;
-                if (invalid_count < 10) {
-                    fprintf(stderr, "Invalid coord at canvas=(%d,%d): src=(%d,%d) flags=0x%02x\n",
-                            canvas_x, canvas_y, (int)coord->x0, (int)coord->y0, coord->flags);
-                    invalid_count++;
-                }
                 uint8_t *out = dst_row + ox * 4;
                 out[0] = out[1] = out[2] = out[3] = 0;
                 continue;
@@ -208,18 +191,8 @@ static void map_backend_warp(void *ctx,
                 int iv = (int)(v + 0.5f);
                 out[c] = (uint8_t)(iv < 0 ? 0 : (iv > 255 ? 255 : iv));
             }
-
-            pixel_count++;
-        }
-
-        /* Print progress every 100 rows */
-        if (oy % 100 == 0) {
-            fprintf(stderr, "Progress: %d/%d rows (%d pixels)\n", oy, warp_h, pixel_count);
-            fflush(stderr);
         }
     }
-    fprintf(stderr, "Completed: processed %d pixels for image %d\n", pixel_count, image_index);
-    fflush(stderr);
 }
 
 static void map_backend_cleanup(void *ctx)

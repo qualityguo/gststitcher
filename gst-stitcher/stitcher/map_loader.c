@@ -239,134 +239,62 @@ static char *read_file(const char *path, size_t *out_size) {
 
 /* Check if path is a directory */
 static int is_directory(const char *path) {
-    fprintf(stderr, "is_directory: ENTER, path=%s\n", path ? path : "NULL");
-    fflush(stderr);
-
     struct stat st;
-    fprintf(stderr, "is_directory: about to call stat()\n");
-    fflush(stderr);
-
     int result = stat(path, &st);
-    fprintf(stderr, "is_directory: stat() returned %d\n", result);
-    fflush(stderr);
 
     if (result != 0) {
-        fprintf(stderr, "is_directory: stat() failed, returning 0\n");
-        fflush(stderr);
         return 0;
     }
 
-    int is_dir = S_ISDIR(st.st_mode);
-    fprintf(stderr, "is_directory: S_ISDIR=%d\n", is_dir);
-    fflush(stderr);
-
-    return is_dir;
+    return S_ISDIR(st.st_mode);
 }
 
 MapFileDataV2 *map_file_load_v2(const char *path, char **error_msg) {
-    fprintf(stderr, "map_file_load_v2: ENTER, path=%s\n", path ? path : "NULL");
-    fflush(stderr);
-
     MapFileDataV2 *data = NULL;
     char *json_content = NULL;
     cJSON *json = NULL;
     char metadata_path[512];
     char coords_path[512];
 
-    fprintf(stderr, "map_file_load_v2: Checking if directory\n");
-    fflush(stderr);
-
     /* Check if path is a directory */
-    fprintf(stderr, "map_file_load_v2: calling is_directory()\n");
-    fflush(stderr);
-
     int is_dir = is_directory(path);
 
-    fprintf(stderr, "map_file_load_v2: is_directory() returned %d\n", is_dir);
-    fflush(stderr);
-
     if (!is_dir) {
-        fprintf(stderr, "map_file_load_v2: path is not a directory\n");
-        fflush(stderr);
         set_error(error_msg, "Map path is not a directory: %s", path);
         return NULL;
     }
 
-    fprintf(stderr, "map_file_load_v2: path is a directory, continuing\n");
-    fflush(stderr);
-
     /* Build metadata.json path */
-    fprintf(stderr, "map_file_load_v2: about to call snprintf for metadata_path\n");
-    fflush(stderr);
-
     snprintf(metadata_path, sizeof(metadata_path), "%s/metadata.json", path);
 
-    fprintf(stderr, "map_file_load_v2: metadata_path=%s\n", metadata_path);
-    fflush(stderr);
-
     /* Read metadata.json */
-    fprintf(stderr, "map_file_load_v2: about to call read_file\n");
-    fflush(stderr);
-
     size_t json_size;
     json_content = read_file(metadata_path, &json_size);
 
-    fprintf(stderr, "map_file_load_v2: read_file returned, json_content=%p, json_size=%zu\n",
-            (void*)json_content, json_size);
-    fflush(stderr);
     if (!json_content) {
         set_error(error_msg, "Failed to read metadata.json from: %s", metadata_path);
         return NULL;
     }
 
     /* Parse JSON */
-    fprintf(stderr, "map_file_load_v2: about to call cJSON_Parse\n");
-    fflush(stderr);
-
     json = cJSON_Parse(json_content);
 
-    fprintf(stderr, "map_file_load_v2: cJSON_Parse returned, json=%p\n", (void*)json);
-    fflush(stderr);
-
     if (!json) {
-        fprintf(stderr, "map_file_load_v2: cJSON_Parse FAILED\n");
-        fflush(stderr);
         set_error(error_msg, "Failed to parse metadata.json");
         goto error;
     }
 
-    fprintf(stderr, "map_file_load_v2: cJSON_Parse succeeded\n");
-    fflush(stderr);
-
     /* Verify magic and version */
-    fprintf(stderr, "map_file_load_v2: about to get magic item\n");
-    fflush(stderr);
-
     cJSON *magic = cJSON_GetObjectItemCaseSensitive(json, "magic");
-
-    fprintf(stderr, "map_file_load_v2: about to get version item\n");
-    fflush(stderr);
-
     cJSON *version = cJSON_GetObjectItemCaseSensitive(json, "version");
-
-    fprintf(stderr, "map_file_load_v2: magic=%p, version=%p\n", (void*)magic, (void*)version);
-    fflush(stderr);
-
-    /* Debug: print the JSON to see what we actually parsed */
-    fprintf(stderr, "map_file_load_v2: JSON content (first 200 chars):\n%.200s\n", json_content);
-    fflush(stderr);
 
     /* Check if magic or version is NULL before accessing */
     if (!magic) {
-        fprintf(stderr, "map_file_load_v2: ERROR - magic is NULL!\n");
-        fflush(stderr);
         set_error(error_msg, "Missing 'magic' field in metadata.json");
         goto error;
     }
 
     if (!version) {
-        fprintf(stderr, "map_file_load_v2: ERROR - version is NULL!\n");
-        fflush(stderr);
         set_error(error_msg, "Missing 'version' field in metadata.json");
         goto error;
     }

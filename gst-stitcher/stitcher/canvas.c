@@ -79,13 +79,6 @@ CanvasInfo *canvas_compute(const StitcherConfig *config,
             crops[i].left, crops[i].right, crops[i].top, crops[i].bottom,
             all_corners[i]);
         expand_bbox(all_corners[i], &min_x, &min_y, &max_x, &max_y);
-
-        /* Debug: print corner coordinates */
-        fprintf(stderr, "Image %d corners: (%.2f,%.2f) (%.2f,%.2f) (%.2f,%.2f) (%.2f,%.2f)\n",
-                i, all_corners[i][0].x, all_corners[i][0].y,
-                all_corners[i][1].x, all_corners[i][1].y,
-                all_corners[i][2].x, all_corners[i][2].y,
-                all_corners[i][3].x, all_corners[i][3].y);
     }
 
     float off_x = -min_x;
@@ -150,9 +143,6 @@ CanvasInfo *canvas_compute(const StitcherConfig *config,
         /* Warp region extends to cover all transformed corners */
         int warp_r = (int)ceilf(img_max_x + off_x);
         int warp_b = (int)ceilf(img_max_y + off_y);
-
-        fprintf(stderr, "Canvas compute img %d: src_origin=(%.2f,%.2f) off=(%.2f,%.2f) warp=(%d,%d,%d,%d)\n",
-                i, src_origin_x, src_origin_y, off_x, off_y, warp_x, warp_y, warp_r - warp_x, warp_b - warp_y);
 
         info->images[i].offset_x = (int)roundf(off_x);
         info->images[i].offset_y = (int)roundf(off_y);

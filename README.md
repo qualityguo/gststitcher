@@ -19,31 +19,189 @@ A high-performance video/image stitching plugin for GStreamer, supporting CPU/GP
 
 ## Quick Start
 
+## Build & Installation
+
 ### Prerequisites
+
+#### Core Dependencies
 
 ```bash
 # Ubuntu/Debian
-sudo apt-get install -y meson ninja-build libglib2.0-dev \
-  libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libjson-glib-dev
+sudo apt-get install -y meson ninja-build pkg-config \
+  libglib2.0-dev libgstreamer1.0-dev \
+  libgstreamer-plugins-base1.0-dev libjson-glib-dev
 
-# Fedora
-sudo dnf install -y meson ninja-build glib2-devel \
-  gstreamer1-devel gstreamer1-plugins-base-devel json-glib-devel
+# Fedora/RHEL
+sudo dnf install -y meson ninja-build pkg-config \
+  glib2-devel gstreamer1-devel gstreamer1-plugins-base-devel \
+  json-glib-devel
+
+# Arch Linux
+sudo pacman -S meson ninja pkgconf glib2 gstreamer json-glib
 ```
 
-### Build
+#### Optional Dependencies
+
+```bash
+# For calibration tool (OpenCV-based)
+sudo apt-get install -y libopencv-dev
+
+# For CUDA backend (GPU acceleration)
+# Install CUDA Toolkit 11.0+ from NVIDIA
+```
+
+### Build Steps
+
+```bash
+# 1. Enter source directory
+cd gst-stitcher/gst-stitcher
+
+# 2. Configure build
+# Basic CPU-only build:
+meson setup build
+
+# Disable calibration tool (no OpenCV):
+meson setup build -Dcalibrate=false
+
+# Enable CUDA backend (requires CUDA):
+meson setup build -Dcuda=true
+
+# 3. Build
+ninja -C build
+
+# 4. Run tests
+ninja -C build test
+
+# 5. Install (optional, installs to system)
+sudo ninja -C build install
+```
+
+### Build Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `-Dcuda=true` | `false` | Enable CUDA backend for GPU acceleration |
+| `-Dcalibrate=true` | `true` | Build calibration tool (requires OpenCV) |
+
+### Local Testing (Without System Install)
+
+```bash
+# Set plugin path to use locally built plugin
+export GST_PLUGIN_PATH=$(pwd)/build/gst
+
+# Verify plugin is loaded
+gst-inspect-1.0 gststitcher
+
+# Run test pipeline
+gst-launch-1.0 --gst-debug-level=2 gststitcher name=s ...
+```
+
+### System Installation
+
+```bash
+# Install to system directories
+sudo ninja -C build install
+
+# Update linker cache (if needed)
+sudo ldconfig
+
+# Verify installation
+gst-inspect-1.0 gststitcher
+```
+
+### Uninstall
+
+```bash
+# If you installed to system
+sudo ninja -C build uninstall
+
+# Or manually remove installed files
+sudo rm /usr/lib/x86_64-linux-gnu/gstreamer-1.0/libgststitcher.so
+```
+
+## Troubleshooting
+
+### Plugin Not Found
+
+```bash
+# Check if GStreamer can find the plugin
+gst-inspect-1.0 gststitcher
+
+# If not found, set plugin path
+export GST_PLUGIN_PATH=/path/to/gst-stitcher/build/gst
+
+# Or install system-wide
+sudo ninja -C build install
+```
+
+### Build Errors
+
+```bash
+# Clean build directory
+rm -rf build
+meson setup build --reconfigure
+ninja -C build
+
+# Check dependencies
+meson setup build --wipe
+
+# Enable verbose build output
+ninja -C build -v
+```
+
+### Runtime Issues
+
+```bash
+# Enable GStreamer debug output
+export GST_DEBUG=3  # 1=ERROR, 2=WARNING, 3=INFO, 4=DEBUG, 5=LOG
+gst-launch-1.0 ...
+
+# Check plugin capabilities
+gst-inspect-1.0 gststitcher
+
+# Verify caps negotiation
+gst-launch-1.0 -v gststitcher name=s ... 2>&1 | grep -i caps
+```
+
+## Quick Demo
+
+### Using Pre-built Homographies (Fastest)
 
 ```bash
 cd gst-stitcher
-meson setup build -Dcuda=false
+
+# Set plugin path
+export GST_PLUGIN_PATH=$(pwd)/build/gst
+
+# Test with example images (if available)
+gst-launch-1.0 -e gststitcher name=s \
+  homography-file=tests/data/homographies_2img_example.json \
+  filesrc location=tests/data/ImageA.png ! pngdec ! videoconvert ! "video/x-raw,format=RGBA" ! s.sink_0 \
+  filesrc location=tests/data/ImageB.png ! pngdec ! videoconvert ! "video/x-raw,format=RGBA" ! s.sink_1 \
+  s. ! pngenc ! filesink location=output.png
+```
+
+### Generate Homographies from Your Images
+
+```bash
+cd gst-stitcher
+
+# 1. Build calibration tool (requires OpenCV)
+meson setup build -Dcalibrate=true
 ninja -C build
 
-# Run tests
-ninja -C build test
+# 2. Generate homography matrix
+build/calibrate/gst-stitcher-calibrate \
+  -i image_left.png image_right.png \
+  -o homography.json
 
-# Local test (without system install)
+# 3. Run stitching
 export GST_PLUGIN_PATH=$(pwd)/build/gst
-gst-inspect-1.0 gststitcher
+gst-launch-1.0 -e gststitcher name=s \
+  homography-file=homography.json \
+  filesrc location=image_left.png ! pngdec ! videoconvert ! "video/x-raw,format=RGBA" ! s.sink_0 \
+  filesrc location=image_right.png ! pngdec ! videoconvert ! "video/x-raw,format=RGBA" ! s.sink_1 \
+  s. ! pngenc ! filesink location=stitched_output.png
 ```
 
 ## Usage
@@ -116,6 +274,7 @@ gst-stitcher/
 
 ## Documentation
 
+- [**Build Guide**](docs/BUILD.md) - **Complete build and installation instructions**
 - [Design Document](docs/设计文档.md) - Architecture and implementation details
 - [Test Guide](docs/测试指南.md) - Build, test, and usage guide
 

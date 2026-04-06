@@ -107,13 +107,11 @@ static GstPad *gst_stitcher_request_new_pad(GstElement *element,
     if (!gst_element_add_pad(element, pad))
         return NULL;
 
-    GST_DEBUG_OBJECT(element, "Created request pad: %s", name);
     return pad;
 }
 
 static void gst_stitcher_release_pad(GstElement *element, GstPad *pad)
 {
-    GST_DEBUG_OBJECT(element, "Releasing pad: %s", GST_PAD_NAME(pad));
     gst_element_remove_pad(element, pad);
 }
 
@@ -127,34 +125,19 @@ static gboolean gst_stitcher_do_init(GstStitcher *self)
 
     if (self->use_map_mode) {
         /* Map file mode */
-        fprintf(stderr, "DEBUG: ENTERING MAP MODE\n");
-        fflush(stderr);
-        GST_INFO_OBJECT(self, "Using map file mode: %s", self->map_file);
 
         /* Load map file v2 */
-        fprintf(stderr, "DEBUG: About to load map file: %s\n", self->map_file);
-        fflush(stderr);
         self->map_data = map_file_load_v2(self->map_file, &map_error);
-        fprintf(stderr, "DEBUG: Map file load returned, map_data=%p\n", (void*)self->map_data);
-        fflush(stderr);
         if (!self->map_data) {
-            fprintf(stderr, "DEBUG: Map file load failed: %s\n", map_error ? map_error : "unknown");
-            fflush(stderr);
             GST_ELEMENT_ERROR(self, LIBRARY, SETTINGS,
                 ("Failed to load map file: %s", map_error ? map_error : "unknown"),
                 ("Map file load error"));
             if (map_error) free(map_error);
             return FALSE;
         }
-        fprintf(stderr, "DEBUG: Map file loaded successfully\n");
-        fflush(stderr);
 
         /* Validate map file */
-        fprintf(stderr, "DEBUG: About to validate map file\n");
-        fflush(stderr);
         if (!map_file_validate_v2(self->map_data, &map_error)) {
-            fprintf(stderr, "DEBUG: Map file validation failed: %s\n", map_error ? map_error : "unknown");
-            fflush(stderr);
             GST_ELEMENT_ERROR(self, LIBRARY, SETTINGS,
                 ("Map file validation failed: %s", map_error ? map_error : "unknown"),
                 ("Map file validation error"));
@@ -163,8 +146,6 @@ static gboolean gst_stitcher_do_init(GstStitcher *self)
             if (map_error) free(map_error);
             return FALSE;
         }
-        fprintf(stderr, "DEBUG: Map file validated successfully\n");
-        fflush(stderr);
 
         /* Collect input sizes from pad caps */
         GstIterator *it = gst_element_iterate_sink_pads(GST_ELEMENT(self));
@@ -206,37 +187,19 @@ static gboolean gst_stitcher_do_init(GstStitcher *self)
         }
 
         /* Create canvas_info from map file data */
-        fprintf(stderr, "DEBUG: Creating canvas_info\n");
-        fflush(stderr);
         self->canvas_info = (CanvasInfo *)g_malloc0(sizeof(CanvasInfo));
-        fprintf(stderr, "DEBUG: Setting canvas dimensions\n");
-        fflush(stderr);
         self->canvas_info->canvas_w = self->map_data->canvas_w;
         self->canvas_info->canvas_h = self->map_data->canvas_h;
         self->canvas_info->num_images = self->map_data->num_inputs;
 
-        fprintf(stderr, "DEBUG: Looping through %d images\n", self->canvas_info->num_images);
-        fflush(stderr);
         for (int i = 0; i < self->canvas_info->num_images; i++) {
-            fprintf(stderr, "DEBUG: Processing image %d\n", i);
-            fflush(stderr);
             self->canvas_info->images[i].offset_x = 0;  /* Map coordinates are absolute */
             self->canvas_info->images[i].offset_y = 0;
-            fprintf(stderr, "DEBUG: Accessing map_data arrays for image %d\n", i);
-            fflush(stderr);
             self->canvas_info->images[i].warp_x = self->map_data->warp_x[i];
             self->canvas_info->images[i].warp_y = self->map_data->warp_y[i];
             self->canvas_info->images[i].warp_w = self->map_data->warp_w[i];
             self->canvas_info->images[i].warp_h = self->map_data->warp_h[i];
-            fprintf(stderr, "DEBUG: Image %d: warp_region=%d,%d,%d,%d\n", i,
-                    self->canvas_info->images[i].warp_x,
-                    self->canvas_info->images[i].warp_y,
-                    self->canvas_info->images[i].warp_w,
-                    self->canvas_info->images[i].warp_h);
-            fflush(stderr);
         }
-        fprintf(stderr, "DEBUG: Loop complete\n");
-        fflush(stderr);
 
         /* Allow user override of output dimensions */
         if (self->output_width > 0)
@@ -244,36 +207,18 @@ static gboolean gst_stitcher_do_init(GstStitcher *self)
         if (self->output_height > 0)
             self->canvas_info->canvas_h = self->output_height;
 
-        GST_INFO_OBJECT(self, "Canvas: %dx%d, %d inputs (map mode)",
-            self->canvas_info->canvas_w, self->canvas_info->canvas_h,
-            self->canvas_info->num_images);
-
         /* Initialize map backend */
-        fprintf(stderr, "DEBUG: Initializing map backend\n");
-        fflush(stderr);
         self->backend = stitcher_backend_map_get();
         self->backend_ctx = self->backend->init(
             self->canvas_info->canvas_w, self->canvas_info->canvas_h);
-        fprintf(stderr, "DEBUG: Map backend initialized\n");
-        fflush(stderr);
 
         /* Set map data to backend */
-        fprintf(stderr, "DEBUG: Setting map data\n");
-        fflush(stderr);
         map_backend_set_map_data_v2(self->backend_ctx, self->map_data);
-        fprintf(stderr, "DEBUG: Map data set\n");
-        fflush(stderr);
 
         /* Detect overlap regions for blending */
-        fprintf(stderr, "DEBUG: Detecting overlaps\n");
-        fflush(stderr);
         self->overlaps = blender_detect_overlaps(self->canvas_info);
-        fprintf(stderr, "DEBUG: Overlaps detected\n");
-        fflush(stderr);
 
         /* Set src pad caps */
-        fprintf(stderr, "DEBUG: Setting src caps\n");
-        fflush(stderr);
         GstCaps *src_caps = gst_caps_new_simple("video/x-raw",
             "format", G_TYPE_STRING, "RGBA",
             "width", G_TYPE_INT, self->canvas_info->canvas_w,
@@ -282,18 +227,12 @@ static gboolean gst_stitcher_do_init(GstStitcher *self)
             NULL);
         gst_aggregator_set_src_caps(GST_AGGREGATOR(self), src_caps);
         gst_caps_unref(src_caps);
-        fprintf(stderr, "DEBUG: Src caps set\n");
-        fflush(stderr);
 
         self->initialized = TRUE;
-        fprintf(stderr, "DEBUG: Initialization complete\n");
-        fflush(stderr);
         return TRUE;
     }
 
     /* Homography mode (original logic) */
-    fprintf(stderr, "DEBUG: ENTERING HOMOGRAPHY MODE\n");
-    fflush(stderr);
     if (self->homography_file) {
         self->config = stitcher_config_parse_file(self->homography_file, &error);
     } else if (self->homography_list) {
@@ -379,10 +318,6 @@ static gboolean gst_stitcher_do_init(GstStitcher *self)
     if (self->output_height > 0)
         self->canvas_info->canvas_h = self->output_height;
 
-    GST_INFO_OBJECT(self, "Canvas: %dx%d, %d inputs",
-        self->canvas_info->canvas_w, self->canvas_info->canvas_h,
-        self->canvas_info->num_images);
-
     /* Detect overlap regions */
     self->overlaps = blender_detect_overlaps(self->canvas_info);
 
@@ -411,21 +346,8 @@ static GstFlowReturn gst_stitcher_aggregate(GstAggregator *aggregator,
     GstStitcher *self = GST_STITCHER(aggregator);
     (void)timeout;
 
-    // fprintf(stderr, "gst_stitcher_aggregate: START\n");
-    // fflush(stderr);
-
-    // fprintf(stderr, "gst_stitcher_aggregate: about to call GST_INFO_OBJECT\n");
-    // fflush(stderr);
-    GST_INFO_OBJECT(self, "aggregate called, initialized=%d", self->initialized);
-    // fprintf(stderr, "gst_stitcher_aggregate: after GST_INFO_OBJECT\n");
-    // fflush(stderr);
-
-    // fprintf(stderr, "gst_stitcher_aggregate: about to iterate sink pads\n");
-    // fflush(stderr);
     /* Check if we have buffers on all pads, and detect EOS */
     GstIterator *check_it = gst_element_iterate_sink_pads(GST_ELEMENT(self));
-    fprintf(stderr, "gst_stitcher_aggregate: after iterate sink pads\n");
-    fflush(stderr);
     gboolean all_have_buffers = TRUE;
     gboolean any_eos = FALSE;
     gboolean check_done = FALSE;
@@ -451,8 +373,6 @@ static GstFlowReturn gst_stitcher_aggregate(GstAggregator *aggregator,
                 /* If we're initialized but one pad has no buffer,
                  * it likely means EOS on that pad */
                 if (self->initialized) {
-                    GST_INFO_OBJECT(self, "Pad %s has no buffer (likely EOS)",
-                                   GST_PAD_NAME(pad));
                     any_eos = TRUE;
                 }
                 check_done = TRUE;
@@ -470,12 +390,10 @@ static GstFlowReturn gst_stitcher_aggregate(GstAggregator *aggregator,
 
     /* If we detected EOS on any pad, propagate EOS downstream */
     if (any_eos && self->initialized) {
-        GST_INFO_OBJECT(self, "EOS detected, sending EOS downstream");
         return GST_FLOW_EOS;
     }
 
     if (!all_have_buffers) {
-        GST_DEBUG_OBJECT(self, "Not all pads have buffers yet, skipping");
         return GST_FLOW_OK;
     }
 
@@ -484,8 +402,6 @@ static GstFlowReturn gst_stitcher_aggregate(GstAggregator *aggregator,
         if (!gst_stitcher_do_init(self))
             return GST_FLOW_ERROR;
     }
-
-    GST_INFO_OBJECT(self, "Processing frame: canvas=%dx%d", self->canvas_info->canvas_w, self->canvas_info->canvas_h);
 
     int cw = self->canvas_info->canvas_w;
     int ch = self->canvas_info->canvas_h;
@@ -587,11 +503,7 @@ static GstFlowReturn gst_stitcher_aggregate(GstAggregator *aggregator,
 
         if (self->use_map_mode) {
             /* Map mode: set image index and warp without homography */
-            // fprintf(stderr, "About to call map_backend_set_image_index for image %d\n", i);
-            // fflush(stderr);
             map_backend_set_image_index(self->backend_ctx, i);
-            // fprintf(stderr, "About to call warp for image %d\n", i);
-            // fflush(stderr);
 
             /* In map mode, the warp function should iterate over the warp region dimensions,
              * not the source image dimensions. The map contains pre-computed transformations
@@ -670,9 +582,6 @@ static GstFlowReturn gst_stitcher_aggregate(GstAggregator *aggregator,
 
     gst_buffer_unmap(outbuf, &outmap);
 
-    GST_INFO_OBJECT(self, "About to finish buffer with timestamp %" GST_TIME_FORMAT,
-        GST_TIME_ARGS(max_timestamp));
-
     /* Set timestamp and duration on output buffer */
     GstFlowReturn ret;
     if (GST_CLOCK_TIME_IS_VALID(max_timestamp)) {
@@ -687,15 +596,12 @@ static GstFlowReturn gst_stitcher_aggregate(GstAggregator *aggregator,
     }
 
     ret = gst_aggregator_finish_buffer(aggregator, outbuf);
-    GST_DEBUG_OBJECT(self, "finish_buffer returned: %s", gst_flow_get_name(ret));
     return ret;
 }
 
 static gboolean gst_stitcher_start(GstAggregator *aggregator)
 {
     GstStitcher *self = GST_STITCHER(aggregator);
-
-    GST_INFO_OBJECT(self, "Starting stitcher element");
 
     /* Reset state for new stream */
     self->initialized = FALSE;
@@ -712,8 +618,6 @@ static gboolean gst_stitcher_start(GstAggregator *aggregator)
 static gboolean gst_stitcher_stop(GstAggregator *aggregator)
 {
     GstStitcher *self = GST_STITCHER(aggregator);
-
-    GST_INFO_OBJECT(self, "Stopping stitcher element");
 
     if (self->backend && self->backend_ctx && self->backend->cleanup) {
         self->backend->cleanup(self->backend_ctx);
